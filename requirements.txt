@@ -1,0 +1,7 @@
+python-telegram-bot
+python-dotenv
+langchain
+geopy
+nltk
+requests
+langchain-google-genai
