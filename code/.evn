@@ -1,0 +1,3 @@
+TELEGRAM_BOT_TOKEN = <Your API Token>
+GOOGLE_API_KEY=<Your API Token>
+ADMIN_CHAT_ID = <Your API Token>
