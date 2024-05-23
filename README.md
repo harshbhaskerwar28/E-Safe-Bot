@@ -1,4 +1,3 @@
-```markdown
 # 🚨 Emergence_Chat_Bot
 
 Welcome to **Emergence_Chat_Bot**! This intelligent Telegram bot is designed to assist users during emergencies by quickly gathering crucial information and notifying relevant authorities. Whether it's a medical emergency, a crime, or a fire, Emergence_Chat_Bot is here to help!
@@ -46,7 +45,7 @@ Welcome to **Emergence_Chat_Bot**! This intelligent Telegram bot is designed to 
 Start the bot by executing:
 ```sh
 python app.py
-```
+
 
 ## 🛠️ Usage
 
