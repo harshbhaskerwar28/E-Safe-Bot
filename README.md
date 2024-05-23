@@ -1,6 +1,6 @@
-# 🚨 Emergence_Chat_Bot
+# 🚨 Emergency_Chat_Bot
 
-Welcome to **Emergence_Chat_Bot**! This intelligent Telegram bot is designed to assist users during emergencies by quickly gathering crucial information and notifying relevant authorities. Whether it's a medical emergency, a crime, or a fire, Emergence_Chat_Bot is here to help!
+Welcome to **Emergency_Chat_Bot**! This intelligent Telegram bot is designed to assist users during emergencies by quickly gathering crucial information and notifying relevant authorities. Whether it's a medical emergency, a crime, or a fire, Emergence_Chat_Bot is here to help!
 
 ## 🌟 Features
 
@@ -23,7 +23,7 @@ Welcome to **Emergence_Chat_Bot**! This intelligent Telegram bot is designed to 
 
 1. **Clone the repository**:
     ```sh
-    git clone https://github.com/yourusername/Emergence_Chat_Bot.git
+    git clone https://github.com/yourusername/Emergency_Chat_Bot.git
     cd Emergence_Chat_Bot
     ```
 
