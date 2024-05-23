@@ -42,9 +42,7 @@ Welcome to **Emergence_Chat_Bot**! This intelligent Telegram bot is designed to 
 
 ### Running the Bot
 
-Start the bot by executing:
-```sh
-python app.py
+Start the bot by executing : python app.py
 
 
 ## 🛠️ Usage
@@ -77,9 +75,4 @@ We welcome contributions! Feel free to submit issues or pull requests.
 
 For any inquiries, please contact us at [your_email@example.com](mailto:your_email@example.com).
 
----
-
-Stay safe and let Emergence_Chat_Bot be your helping hand in emergencies! 🚑🚒🚓
-```
-
-This README file provides comprehensive information about the Emergence_Chat_Bot, guiding users through installation, usage, and contributing processes in a clear and engaging manner.
+Stay safe and let Emergence_Chat_Bot be your helping hand in emergencies! 🚑🚒
