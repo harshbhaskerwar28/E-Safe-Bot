@@ -24,7 +24,7 @@ Welcome to **Emergency_Chat_Bot**! This intelligent Telegram bot is designed to 
 1. **Clone the repository**:
     ```sh
     git clone https://github.com/harshbhaskerwar28/Emergency_Chat_Bot.git
-    cd Emergence_Chat_Bot
+    cd Emergency_Chat_Bot
     ```
 
 2. **Install the required dependencies**:
