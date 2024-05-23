@@ -70,9 +70,3 @@ Emergence_Chat_Bot is inspired by the need for quick and efficient emergency res
 ## 🙌 Contributions
 
 We welcome contributions! Feel free to submit issues or pull requests.
-
-## 📞 Contact
-
-For any inquiries, please contact us at [your_email@example.com](mailto:your_email@example.com).
-
-Stay safe and let Emergence_Chat_Bot be your helping hand in emergencies! 🚑🚒
