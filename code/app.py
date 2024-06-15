@@ -15,6 +15,8 @@ from geopy.geocoders import Nominatim
 nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('averaged_perceptron_tagger')
+nltk.download('maxent_ne_chunker')
+nltk.download('words')
 
 # Load environment variables
 load_dotenv()
@@ -34,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # Template for prompting responses
 prompt_template = """
-Answer the question in a short, precise, detailed, friendly and engaging way, drawing from the provided context if possible. If the question is not directly related to the context, provide a thoughtful and relevant response based on your general knowledge.
+As an emergency assistance chatbot, provide a concise, precise, and detailed response to the question, while maintaining a calm, reassuring, and engaging tone. If the provided context is relevant to the emergency situation, incorporate information from it into your response. However, if the question is not directly related to the context, draw upon your knowledge and expertise to provide helpful guidance or advice related to emergency preparedness and response.
 
 Context:{context}
 
@@ -60,7 +62,7 @@ chain = setup_conversational_chain()
 async def start(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     await update.message.reply_html(rf"Hello {user.mention_html()}, I am an Emergency Registration Chatbot. What's your emergency? Please select an option or describe your emergency.")
-    options = ["Ambulance", "Police", "Fire Brigade"]
+    options = ["Ambulance", "Police", "Fire Brigade", "Disaster Management"]
     await present_options(update, context, options)
 
 # Handler for receiving user location
@@ -174,19 +176,42 @@ def analyze_text(text):
     filtered_tokens = [token for token in tokens if token not in stop_words]
     tagged_tokens = nltk.pos_tag(filtered_tokens)
 
+    # Named Entity Recognition
+    entities = nltk.ne_chunk(tagged_tokens)
+
     # Define emergency keyword patterns
     emergency_keywords = {
         'ambulance': ['accident', 'injury', 'medical', 'hurt', 'sick', 'health', 'pain', 'emergency'],
         'police': ['crime', 'robbery', 'theft', 'violence', 'assault', 'law', 'illegal', 'arrest'],
-        'fire brigade': ['fire', 'blaze', 'flames', 'smoke', 'burning']
+        'fire brigade': ['fire', 'blaze', 'flames', 'smoke', 'burning'],
+        'disaster management': ['disaster', 'earthquake', 'flood', 'hurricane', 'tornado']
     }
 
+    # Pattern matching
+    emergency_patterns = [
+        r'\b(accident|injury|medical|hurt|sick|health|pain|emergency)\b',
+        r'\b(crime|robbery|theft|violence|assault|law|illegal|arrest)\b',
+        r'\b(fire|blaze|flames|smoke|burning)\b',
+        r'\b(disaster|earthquake|flood|hurricane|tornado)\b'
+    ]
+
     emergency_types = []
-    for emergency_type, keywords in emergency_keywords.items():
-        for token, pos in tagged_tokens:
-            if token in keywords or (pos.startswith('NN') and token in keywords):
-                emergency_types.append(emergency_type)
-                break
+    for entity in entities:
+        if hasattr(entity, 'label') and entity.label() == 'PERSON':
+            continue  # Skip person entities
+        for emergency_type, keywords in emergency_keywords.items():
+            for keyword in keywords:
+                if keyword in entity:
+                    emergency_types.append(emergency_type)
+                    break
+
+    for pattern in emergency_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            for emergency_type, keywords in emergency_keywords.items():
+                for keyword in keywords:
+                    if re.search(r'\b{}\b'.format(keyword), text, re.IGNORECASE):
+                        emergency_types.append(emergency_type)
+                        break
 
     if 'fire brigade' in emergency_types:
         emergency_types.append('ambulance')
@@ -200,7 +225,7 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.LOCATION, location))
     application.add_handler(MessageHandler(filters.PHOTO, handle_image))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    application.add_handler(CallbackQueryHandler(handle_option_selection, pattern=r'^(Ambulance|Police|Fire Brigade)$'))
+    application.add_handler(CallbackQueryHandler(handle_option_selection, pattern=r'^(Ambulance|Police|Fire Brigade|Disaster Management)$'))
     application.add_handler(CallbackQueryHandler(handle_address_choice, pattern=r'^(add_address|skip_address)$'))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_address))
     application.run_polling(allowed_updates=Update.ALL_TYPES)
