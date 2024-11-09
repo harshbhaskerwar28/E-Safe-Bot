@@ -3,9 +3,7 @@ import logging
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, CallbackQueryHandler
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
-from langchain.chains.question_answering import load_qa_chain
+import google.generativeai as genai
 from functools import lru_cache
 import nltk
 import re
@@ -34,29 +32,28 @@ ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Template for prompting responses
-prompt_template = """
-As an emergency assistance chatbot, provide a concise, precise, and detailed response to the question, while maintaining a calm, reassuring, and engaging tone. If the provided context is relevant to the emergency situation, incorporate information from it into your response. However, if the question is not directly related to the context, draw upon your knowledge and expertise to provide helpful guidance or advice related to emergency preparedness and response.
+# Configure Gemini
+genai.configure(api_key=GEMINI_API_TOKEN)
 
-Context:{context}
+# Initialize the model
+model = genai.GenerativeModel('gemini-pro')
 
-Question:{question}
+async def get_gemini_response(question, context=""):
+    prompt = f"""
+    As an emergency assistance chatbot, provide a concise, precise, and detailed response to the question, 
+    while maintaining a calm, reassuring, and engaging tone. If the provided context is relevant to the 
+    emergency situation, incorporate information from it into your response.
 
-Answer:
-"""
-
-@lru_cache(maxsize=None)
-def setup_conversational_chain():
-    # Initialize the chatbot model
-    model = ChatGoogleGenerativeAI(model="gemini-pro", api_key=GEMINI_API_TOKEN, temperature=0.7)
-    # Set up the prompt template
-    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-    # Load the conversational chain
-    chain = load_qa_chain(llm=model, chain_type="stuff", prompt=prompt)
-    return chain
-
-# Initialize the conversational chain
-chain = setup_conversational_chain()
+    Context: {context}
+    Question: {question}
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        logger.error(f"Error generating response: {e}")
+        return "I apologize, but I'm having trouble processing your request. Please try again or contact emergency services directly if this is an urgent situation."
 
 # Command handler for '/start' command
 async def start(update: Update, context: CallbackContext) -> None:
@@ -97,7 +94,7 @@ async def handle_address(update: Update, context: CallbackContext) -> None:
         context.user_data['additional_address'] = additional_address
         await update.message.reply_text("Thank you for the additional address details. Please upload at least one image regarding the emergency.")
     else:
-        await update.message.reply_text("Please upload at least one image regarding the emergency.")
+        await handle_text(update, context)
 
 # Handler for receiving images
 async def handle_image(update: Update, context: CallbackContext) -> None:
@@ -113,12 +110,13 @@ async def handle_image(update: Update, context: CallbackContext) -> None:
 async def handle_text(update: Update, context: CallbackContext) -> None:
     user_text = update.message.text
     if context.user_data.get('address_choice') == "add":
-        additional_address = user_text
-        context.user_data['additional_address'] = additional_address
-        await update.message.reply_text("Thank you for the additional address details. Please upload at least one image regarding the emergency.")
-        context.user_data['address_choice'] = None
+        await handle_address(update, context)
     else:
         if user_text:
+            # Get AI response for the user's query
+            ai_response = await get_gemini_response(user_text)
+            await update.message.reply_text(ai_response)
+            
             # Analyze the text using NLP
             emergency_types = analyze_text(user_text)
             if emergency_types:
@@ -126,7 +124,9 @@ async def handle_text(update: Update, context: CallbackContext) -> None:
                 options_text = ", ".join(emergency_types)
                 await update.message.reply_text(f"Understood, you need {options_text} assistance. Please share your location.")
             else:
-                await update.message.reply_text("I'm sorry, I couldn't understand your emergency. Please try again or select an option from the menu.")
+                await update.message.reply_text("I'm not sure about the type of emergency. Please select from the options below or provide more details.")
+                options = ["Ambulance", "Police", "Fire Brigade", "Disaster Management"]
+                await present_options(update, context, options)
 
 # Function to present options to the user
 async def present_options(update: Update, context: CallbackContext, options: list) -> None:
@@ -148,15 +148,19 @@ async def handle_option_selection(update: Update, context: CallbackContext) -> N
 
 # Function to send admin message and images
 async def send_admin_message(update: Update, context: CallbackContext, media: list) -> None:
-    selected_options = context.user_data.get('selected_options')
+    selected_options = context.user_data.get('selected_options', [])
     location = context.user_data.get('location')
     additional_address = context.user_data.get('additional_address', '')
 
-    geolocator = Nominatim(user_agent="Emergency Bot")
-    location_address = geolocator.reverse(f"{location.latitude}, {location.longitude}", exactly_one=True).address
-    location_link = f"https://www.google.com/maps/search/?api=1&query={location.latitude},{location.longitude}"
+    if location:
+        geolocator = Nominatim(user_agent="Emergency Bot")
+        location_address = geolocator.reverse(f"{location.latitude}, {location.longitude}", exactly_one=True).address
+        location_link = f"https://www.google.com/maps/search/?api=1&query={location.latitude},{location.longitude}"
 
-    admin_message = f"Emergency: {', '.join(selected_options)}\nLocation: {location_address}\nAdditional Address: {additional_address}\nGoogle Maps: {location_link}"
+        admin_message = f"Emergency: {', '.join(selected_options)}\nLocation: {location_address}\nAdditional Address: {additional_address}\nGoogle Maps: {location_link}"
+    else:
+        admin_message = f"Emergency: {', '.join(selected_options)}\nLocation: Not provided\nAdditional Address: {additional_address}"
+
     await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=admin_message)
 
     # Sending images
@@ -201,7 +205,7 @@ def analyze_text(text):
             continue  # Skip person entities
         for emergency_type, keywords in emergency_keywords.items():
             for keyword in keywords:
-                if keyword in entity:
+                if keyword in str(entity).lower():
                     emergency_types.append(emergency_type)
                     break
 
@@ -227,7 +231,6 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     application.add_handler(CallbackQueryHandler(handle_option_selection, pattern=r'^(Ambulance|Police|Fire Brigade|Disaster Management)$'))
     application.add_handler(CallbackQueryHandler(handle_address_choice, pattern=r'^(add_address|skip_address)$'))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_address))
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
